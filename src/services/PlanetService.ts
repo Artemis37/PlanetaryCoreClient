@@ -1,4 +1,4 @@
-import { Planet } from '../models/planet';
+import { Planet, PlanetDetail } from '../models/planet';
 
 class PlanetService {
   private readonly baseUrl = 'https://localhost:8081/api/Planet';
@@ -45,6 +45,29 @@ class PlanetService {
       }
     } catch (error) {
       console.error('Planet fetch error:', error);
+      throw error;
+    }
+  }
+
+  async getPlanetDetail(planetId: string, token: string): Promise<PlanetDetail> {
+    try {
+      const response = await fetch(`${this.baseUrl}/${planetId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data: PlanetDetail = await response.json();
+        return data;
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch planet details');
+      }
+    } catch (error) {
+      console.error('Planet detail fetch error:', error);
       throw error;
     }
   }

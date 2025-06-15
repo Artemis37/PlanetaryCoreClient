@@ -44,10 +44,8 @@ const PlanetsPage = () => {
 
     fetchPlanets();
   }, [token, isAuthenticated, router]);
-
   const handlePlanetClick = (planetId: string) => {
-    // This will be implemented later for planet details
-    message.info('Planet details will be implemented later');
+    router.push(`/planets/${planetId}`);
   };
 
   const formatTemperature = (temp: number) => {
