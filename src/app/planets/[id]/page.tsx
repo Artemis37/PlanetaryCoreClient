@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, Row, Col, Typography, Spin, message, Tag, Space, Button, Divider, Statistic, Progress } from 'antd';
+import { Card, Row, Col, Typography, Spin, message, Tag, Space, Button, Divider, Statistic, Progress, Modal } from 'antd';
 import { 
   GlobalOutlined, 
   EnvironmentOutlined,
@@ -24,14 +24,15 @@ import PlanetCriteriaModal from '../../../components/PlanetCriteriaModal';
 
 const { Title, Text, Paragraph } = Typography;
 
-const PlanetDetailPage = () => {
-  const [planet, setPlanet] = useState<PlanetDetail | null>(null);
+const PlanetDetailPage = () => {  const [planet, setPlanet] = useState<PlanetDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [editingCriteria, setEditingCriteria] = useState<PlanetCriteriaFlat | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [criteriaToDelete, setCriteriaToDelete] = useState<PlanetCriteriaFlat | null>(null);
   const { token, isAuthenticated } = useAppSelector((state) => state.user);
   const router = useRouter();
   const params = useParams();
@@ -81,6 +82,42 @@ const PlanetDetailPage = () => {
     setEditingCriteria(null);
     setIsEditMode(false);
   };
+  const handleDeleteCriteria = (criteriaId: string) => {
+    if (!planet) return;
+    
+    const criteria = planet.criteria.find(c => c.criteriaId === criteriaId);
+    if (criteria) {
+      setCriteriaToDelete(criteria);
+      setDeleteModalVisible(true);
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!planet || !criteriaToDelete) return;
+
+    try {
+      // Remove the criteria from the list
+      const updatedCriteria = planet.criteria.filter(c => c.criteriaId !== criteriaToDelete.criteriaId);
+      
+      setPlanet({
+        ...planet,
+        criteria: updatedCriteria
+      });
+      
+      setHasChanges(true);
+      setDeleteModalVisible(false);
+      setCriteriaToDelete(null);
+      message.success('Criteria removed');
+    } catch (error) {
+      message.error('Failed to remove criteria');
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalVisible(false);
+    setCriteriaToDelete(null);
+  };
+
   const handleModalSubmit = async (criteriaData: UpdatePlanetCriteria) => {
     if (!planet || !token) return;
 
@@ -152,8 +189,7 @@ const PlanetDetailPage = () => {
       setModalLoading(false);
     }
   };
-
-  const handleSavePlanet = async () => {
+    const handleSavePlanet = async () => {
     if (!planet || !token) return;
 
     try {
@@ -407,14 +443,22 @@ const PlanetDetailPage = () => {
                     style={{ 
                       border: criteria.isMet ? '2px solid #52c41a' : '2px solid #ff4d4f',
                       backgroundColor: criteria.isMet ? '#f6ffed' : '#fff2f0'
-                    }}
-                    extra={
-                      <Button
-                        type="text"
-                        icon={<EditOutlined />}
-                        size="small"
-                        onClick={() => handleEditCriteria(criteria.criteriaId)}
-                      />
+                    }}                    extra={
+                      <Space size="small">
+                        <Button
+                          type="text"
+                          icon={<EditOutlined />}
+                          size="small"
+                          onClick={() => handleEditCriteria(criteria.criteriaId)}
+                        />
+                        <Button
+                          type="text"
+                          icon={<DeleteOutlined />}
+                          size="small"
+                          danger
+                          onClick={() => handleDeleteCriteria(criteria.criteriaId)}
+                        />
+                      </Space>
                     }
                   >                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                       {criteria.isMet ? (
@@ -499,8 +543,7 @@ const PlanetDetailPage = () => {
               </Button>
             </div>
           )}        </Card>
-      </div>
-        {/* Planet Criteria Modal */}
+      </div>      {/* Planet Criteria Modal */}
       <PlanetCriteriaModal
         visible={modalVisible}
         onCancel={handleModalCancel}
@@ -510,7 +553,24 @@ const PlanetDetailPage = () => {
         isEdit={isEditMode}
         token={token || ''}
         existingCriteria={planet?.criteria || []}
-      />
+      />{/* Delete Confirmation Modal */}
+      <Modal
+        title="Confirm Deletion"
+        open={deleteModalVisible}
+        onOk={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        okText="Delete"
+        okType="danger"
+        cancelText="Cancel"
+        destroyOnHidden
+      >
+        <p>
+          Are you sure you want to remove "{criteriaToDelete?.criteriaName || 'Unknown'}" from this planet?
+        </p>
+        <p style={{ fontWeight: 'bold', color: '#ff4d4f' }}>
+          This action cannot be undone.
+        </p>
+      </Modal>
     </div>
   );
 };
