@@ -7,19 +7,25 @@ import {
   PlusOutlined, 
   CheckCircleOutlined, 
   ExclamationCircleOutlined,
-  InfoCircleOutlined 
+  InfoCircleOutlined,
+  EditOutlined
 } from '@ant-design/icons';
 import { useAppSelector } from '../../store/hooks';
 import { useRouter } from 'next/navigation';
-import criteriaService from '../../services/CriteriaService';
+import criteriaService, { CreateCriteriaRequest, UpdateCriteriaRequest } from '../../services/CriteriaService';
 import { Criteria } from '../../models/criteria';
 import { UserType } from '../../models/userType';
+import CriteriaModal from '../../components/CriteriaModal';
 
 const { Title, Text, Paragraph } = Typography;
 
 const CriteriaPage = () => {
   const [criteria, setCriteria] = useState<Criteria[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [editingCriteria, setEditingCriteria] = useState<Criteria | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const { token, isAuthenticated, user } = useAppSelector((state) => state.user);
   const router = useRouter();
 
@@ -45,14 +51,61 @@ const CriteriaPage = () => {
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchCriteria();
+    };    fetchCriteria();
   }, [token, isAuthenticated, user, router]);
 
+  const fetchCriteria = async () => {
+    try {
+      setLoading(true);
+      const criteriaData = await criteriaService.getCriteria(token!);
+      setCriteria(criteriaData);
+    } catch (error: any) {
+      message.error(error.message || 'Failed to load criteria');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddCriteria = () => {
-    // This will be implemented later
-    message.info('Add criteria functionality will be implemented later');
+    setEditingCriteria(null);
+    setIsEditMode(false);
+    setModalVisible(true);
+  };
+
+  const handleEditCriteria = (criteria: Criteria) => {
+    setEditingCriteria(criteria);
+    setIsEditMode(true);
+    setModalVisible(true);
+  };
+
+  const handleModalSubmit = async (data: CreateCriteriaRequest | UpdateCriteriaRequest) => {
+    setModalLoading(true);
+    try {
+      if (isEditMode) {
+        await criteriaService.updateCriteria(data as UpdateCriteriaRequest, token!);
+        message.success('Criteria updated successfully!');
+      } else {
+        await criteriaService.createCriteria(data as CreateCriteriaRequest, token!);
+        message.success('Criteria created successfully!');
+      }
+      
+      setModalVisible(false);
+      setEditingCriteria(null);
+      setIsEditMode(false);
+      
+      // Refresh criteria list
+      await fetchCriteria();
+    } catch (error: any) {
+      message.error(error.message || `Failed to ${isEditMode ? 'update' : 'create'} criteria`);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleModalCancel = () => {
+    setModalVisible(false);
+    setEditingCriteria(null);
+    setIsEditMode(false);
   };
 
   const getCategoryColor = (category: string) => {
@@ -124,9 +177,7 @@ const CriteriaPage = () => {
           >
             Add Criteria
           </Button>
-        </div>
-
-        {/* Criteria Grid */}
+        </div>        {/* Criteria Grid */}
         <Row gutter={[24, 24]}>
           {criteria.map((criterion) => (
             <Col xs={24} sm={12} lg={8} key={criterion.id}>
@@ -134,7 +185,6 @@ const CriteriaPage = () => {
                 hoverable
                 style={{ 
                   height: '100%',
-                  cursor: 'pointer',
                   transition: 'all 0.3s ease',
                 }}
                 cover={
@@ -142,8 +192,24 @@ const CriteriaPage = () => {
                     padding: '24px', 
                     textAlign: 'center',
                     background: 'linear-gradient(135deg, #52c41a 0%, #389e0d 100%)',
-                    color: 'white'
+                    color: 'white',
+                    position: 'relative'
                   }}>
+                    <Button
+                      type="text"
+                      icon={<EditOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditCriteria(criterion);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        color: 'white',
+                        border: '1px solid rgba(255,255,255,0.3)'
+                      }}
+                    />
                     <SettingOutlined style={{ fontSize: '48px', marginBottom: '8px' }} />
                     <Title level={4} style={{ color: 'white', margin: 0 }}>
                       {criterion.name}
@@ -231,10 +297,19 @@ const CriteriaPage = () => {
               onClick={handleAddCriteria}
             >
               Add First Criteria
-            </Button>
-          </div>
+            </Button>          </div>
         )}
       </div>
+
+      {/* Criteria Modal */}
+      <CriteriaModal
+        visible={modalVisible}
+        onCancel={handleModalCancel}
+        onSubmit={handleModalSubmit}
+        loading={modalLoading}
+        criteria={editingCriteria}
+        isEdit={isEditMode}
+      />
     </div>
   );
 };
