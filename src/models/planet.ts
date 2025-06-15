@@ -92,3 +92,30 @@ export interface PlanetDetail {
   userId: string;
   criteria: PlanetCriteriaFlat[];
 }
+
+export interface UpdatePlanetCriteria {
+  criteriaId: string;
+  value: number;
+  score: number;
+  isMet: boolean;
+  notes: string;
+}
+
+export interface UpdatePlanetRequest {
+  planetId: string;
+  name: string;
+  stellarSystem: string;
+  distanceFromEarth: number;
+  radius: number;
+  mass: number;
+  surfaceTemperature: number;
+  surfaceGravity: number;
+  hasAtmosphere: boolean;
+  atmosphericComposition: string;
+  atmosphericPressure: number;
+  hasWater: boolean;
+  waterCoverage: number;
+  planetType: string;
+  discoveryDate: string;
+  criteria: UpdatePlanetCriteria[];
+}

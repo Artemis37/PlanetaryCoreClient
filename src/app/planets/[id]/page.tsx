@@ -13,19 +13,25 @@ import {
   PlusOutlined,
   EditOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined
+  CloseCircleOutlined,
+  DeleteOutlined
 } from '@ant-design/icons';
 import { useAppSelector } from '../../../store/hooks';
 import { useRouter, useParams } from 'next/navigation';
 import planetService from '../../../services/PlanetService';
-import { PlanetDetail, PlanetCriteriaFlat } from '../../../models/planet';
-import { log } from 'console';
+import { PlanetDetail, PlanetCriteriaFlat, UpdatePlanetCriteria } from '../../../models/planet';
+import PlanetCriteriaModal from '../../../components/PlanetCriteriaModal';
 
 const { Title, Text, Paragraph } = Typography;
 
 const PlanetDetailPage = () => {
   const [planet, setPlanet] = useState<PlanetDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [editingCriteria, setEditingCriteria] = useState<PlanetCriteriaFlat | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const { token, isAuthenticated } = useAppSelector((state) => state.user);
   const router = useRouter();
   const params = useParams();
@@ -55,13 +61,139 @@ const PlanetDetailPage = () => {
       fetchPlanetDetail();
     }
   }, [planetId, token, isAuthenticated, router]);
-
   const handleAddCriteria = () => {
-    message.info('Add criteria functionality will be implemented later');
+    setEditingCriteria(null);
+    setIsEditMode(false);
+    setModalVisible(true);
   };
 
   const handleEditCriteria = (criteriaId: string) => {
-    message.info('Edit criteria functionality will be implemented later');
+    const criteria = planet?.criteria.find(c => c.criteriaId === criteriaId);
+    if (criteria) {
+      setEditingCriteria(criteria);
+      setIsEditMode(true);
+      setModalVisible(true);
+    }
+  };
+
+  const handleModalCancel = () => {
+    setModalVisible(false);
+    setEditingCriteria(null);
+    setIsEditMode(false);
+  };
+  const handleModalSubmit = async (criteriaData: UpdatePlanetCriteria) => {
+    if (!planet || !token) return;
+
+    setModalLoading(true);
+    
+    try {
+        let updatedCriteria = [...planet.criteria];
+      
+      if (isEditMode) {
+        // Update existing criteria
+        const index = updatedCriteria.findIndex(c => c.criteriaId === criteriaData.criteriaId);
+        if (index !== -1) {
+          updatedCriteria[index] = {
+            ...updatedCriteria[index],
+            value: criteriaData.value,
+            score: criteriaData.score,
+            isMet: criteriaData.isMet,
+            notes: criteriaData.notes,
+          };
+        }
+      } else {
+        // Add new criteria (check if it already exists)
+        const existingIndex = updatedCriteria.findIndex(c => c.criteriaId === criteriaData.criteriaId);
+        if (existingIndex !== -1) {
+          message.error('This criteria already exists for this planet');
+          setModalLoading(false);
+          return;
+        }
+        
+        // Get criteria details from the service to populate the new entry
+        const criteriaService = (await import('../../../services/CriteriaService')).default;
+        const criteriaDetails = await criteriaService.getCriteriaById(criteriaData.criteriaId, token);
+        
+        // Create new criteria entry
+        const newCriteria: PlanetCriteriaFlat = {
+          id: '', // Will be set by backend
+          planetId: planet.id,
+          criteriaId: criteriaData.criteriaId,
+          value: criteriaData.value,
+          score: criteriaData.score,
+          isMet: criteriaData.isMet,
+          notes: criteriaData.notes,
+          evaluationDate: new Date().toISOString(),
+          criteriaName: criteriaDetails.name,
+          criteriaDescription: criteriaDetails.description,
+          criteriaCategory: criteriaDetails.category,
+          minimumThreshold: criteriaDetails.minimumThreshold,
+          maximumThreshold: criteriaDetails.maximumThreshold,
+          unit: criteriaDetails.unit,
+          weight: criteriaDetails.weight,
+          isRequired: criteriaDetails.isRequired,
+        };
+        updatedCriteria.push(newCriteria);
+      }
+        
+      setPlanet({
+        ...planet,
+        criteria: updatedCriteria
+      });
+      
+      setHasChanges(true);
+      setModalVisible(false);
+      setEditingCriteria(null);
+      setIsEditMode(false);
+      message.success(isEditMode ? 'Criteria updated' : 'Criteria added');
+    } catch (error: any) {
+      message.error(error.message || 'Failed to update criteria');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleSavePlanet = async () => {
+    if (!planet || !token) return;
+
+    try {
+      setLoading(true);
+      
+      const updateData = {
+        planetId: planet.id,
+        name: planet.name,
+        stellarSystem: planet.stellarSystem,
+        distanceFromEarth: planet.distanceFromEarth,
+        radius: planet.radius,
+        mass: planet.mass,
+        surfaceTemperature: planet.surfaceTemperature,
+        surfaceGravity: planet.surfaceGravity,
+        hasAtmosphere: planet.hasAtmosphere,
+        atmosphericComposition: planet.atmosphericComposition,
+        atmosphericPressure: planet.atmosphericPressure,
+        hasWater: planet.hasWater,
+        waterCoverage: planet.waterCoverage,
+        planetType: planet.planetType,
+        discoveryDate: planet.discoveryDate,
+        criteria: planet.criteria.map(c => ({
+          criteriaId: c.criteriaId,
+          value: c.value,
+          score: c.score,
+          isMet: c.isMet,
+          notes: c.notes
+        }))
+      };
+
+      const updatedPlanet = await planetService.updatePlanet(updateData, token);
+      setPlanet(updatedPlanet);
+      setHasChanges(false);
+      message.success('Planet saved successfully');
+      router.push('/planets');
+    } catch (error: any) {
+      message.error(error.message || 'Failed to save planet');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatTemperature = (temp: number) => {
@@ -239,20 +371,30 @@ const PlanetDetailPage = () => {
               </Space>
             </Card>
           </Col>
-        </Row>
-
-        {/* Criteria Section */}
+        </Row>        {/* Criteria Section */}
         <Card 
           title={
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Habitability Criteria</span>
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />}
-                onClick={handleAddCriteria}
-              >
-                Add Criteria
-              </Button>
+              <Space>
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={handleAddCriteria}
+                >
+                  Add Criteria
+                </Button>
+                {hasChanges && (
+                  <Button 
+                    type="primary"
+                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                    loading={loading}
+                    onClick={handleSavePlanet}
+                  >
+                    Save Planet
+                  </Button>
+                )}
+              </Space>
             </div>
           }
         >
@@ -356,9 +498,19 @@ const PlanetDetailPage = () => {
                 Add First Criteria
               </Button>
             </div>
-          )}
-        </Card>
+          )}        </Card>
       </div>
+        {/* Planet Criteria Modal */}
+      <PlanetCriteriaModal
+        visible={modalVisible}
+        onCancel={handleModalCancel}
+        onSubmit={handleModalSubmit}
+        loading={modalLoading}
+        planetCriteria={editingCriteria}
+        isEdit={isEditMode}
+        token={token || ''}
+        existingCriteria={planet?.criteria || []}
+      />
     </div>
   );
 };

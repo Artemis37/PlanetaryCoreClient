@@ -71,6 +71,30 @@ class PlanetService {
       throw error;
     }
   }
+
+  async updatePlanet(planetData: any, token: string): Promise<PlanetDetail> {
+    try {
+      const response = await fetch(`${this.baseUrl}/${planetData.planetId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(planetData),
+      });
+
+      if (response.ok) {
+        const data: PlanetDetail = await response.json();
+        return data;
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update planet');
+      }
+    } catch (error) {
+      console.error('Planet update error:', error);
+      throw error;
+    }
+  }
 }
 
 export const planetService = new PlanetService();
