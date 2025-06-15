@@ -1,27 +1,24 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Layout, Button, Dropdown, Avatar, Space } from 'antd';
 import { UserOutlined, LogoutOutlined, DownOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../hooks/useAuth';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { logout } from '../store/userSlice';
+import authService from '../services/AuthService';
 
 const { Header } = Layout;
 
 const CustomHeader = () => {
-  const { user, isAuthenticated, logout } = useAuth();
-  const [authChecked, setAuthChecked] = useState(false);
+  const dispatch = useAppDispatch();
+  const { user, isAuthenticated } = useAppSelector((state) => state.user);
   const router = useRouter();
 
-  useEffect(() => {
-    console.log('Checking authentication status...');
-    console.log('isAuthenticated:', isAuthenticated);
-    
-  }, [isAuthenticated]);
-
   const handleLogout = () => {
-    logout();
+    authService.logout();
+    dispatch(logout());
     router.push('/');
   };
 

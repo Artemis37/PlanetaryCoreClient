@@ -5,7 +5,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Layout } from "antd";
 import CustomHeader from "../components/CustomHeader";
 import CustomFooter from "../components/CustomFooter";
+import AuthInitializer from "../components/AuthInitializer";
 import { AntdRegistry } from '@ant-design/nextjs-registry';
+import { Provider } from 'react-redux';
+import { store } from '../store/store';
 import "./globals.css";
 
 const { Content } = Layout;
@@ -28,18 +31,22 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <AntdRegistry>
-          <Layout style={{ minHeight: '100vh' }}>
-            <CustomHeader />
-            <Content style={{ 
-              paddingTop: '64px', // Account for fixed header
-              minHeight: 'calc(100vh - 64px)' 
-            }}>
-              {children}
-            </Content>
-            <CustomFooter />
-          </Layout>
-        </AntdRegistry>
+        <Provider store={store}>
+          <AuthInitializer>
+            <AntdRegistry>
+              <Layout style={{ minHeight: '100vh' }}>
+                <CustomHeader />
+                <Content style={{ 
+                  paddingTop: '64px', // Account for fixed header
+                  minHeight: 'calc(100vh - 64px)' 
+                }}>
+                  {children}
+                </Content>
+                <CustomFooter />
+              </Layout>
+            </AntdRegistry>
+          </AuthInitializer>
+        </Provider>
       </body>
     </html>
   );

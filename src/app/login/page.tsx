@@ -1,28 +1,42 @@
 'use client';
 
-import { useState } from 'react';
 import { Form, Input, Button, Card, Typography, message, Space } from 'antd';
 import { UserOutlined, LockOutlined, LoginOutlined } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { loginStart, loginSuccess, loginFailure } from '../../store/userSlice';
 import authService from '../../services/AuthService';
 import { LoginRequest } from '../../models/auth';
 
 const { Title, Text } = Typography;
 
 const Login = () => {
-  const [loading, setLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const { loading } = useAppSelector((state) => state.user);
   const router = useRouter();
 
   const onFinish = async (values: LoginRequest) => {
-    setLoading(true);
+    dispatch(loginStart());
     try {
       const response = await authService.login(values);
+      
+      dispatch(loginSuccess({
+        user: {
+          username: response.username,
+          email: response.email,
+          firstName: response.firstName,
+          lastName: response.lastName,
+          userType: response.userType,
+          expiresAt: response.expiresAt,
+        },
+        token: response.token,
+      }));
+      
       message.success(`Welcome back, ${response.firstName}!`);
       router.push('/');
     } catch (error: any) {
+      dispatch(loginFailure());
       message.error(error.message || 'Login failed. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
