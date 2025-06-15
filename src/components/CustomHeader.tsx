@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Layout, Button, Dropdown, Avatar, Space } from 'antd';
-import { UserOutlined, LogoutOutlined, DownOutlined, GlobalOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, DownOutlined, GlobalOutlined, SettingOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
@@ -15,12 +15,15 @@ const CustomHeader = () => {
   const dispatch = useAppDispatch();
   const { user, isAuthenticated } = useAppSelector((state) => state.user);
   const router = useRouter();
-
   const handleLogout = () => {
     authService.logout();
     dispatch(logout());
     router.push('/');
   };
+
+  // Check if user is SuperAdmin
+  const isSuperAdmin = user?.userType === 'SuperAdmin';
+
   const userMenuItems = [
     {
       key: 'profile',
@@ -40,6 +43,13 @@ const CustomHeader = () => {
       icon: <GlobalOutlined />,
       onClick: () => router.push('/planets'),
     },
+    // Only show Criteria menu item for SuperAdmins
+    ...(isSuperAdmin ? [{
+      key: 'criteria',
+      label: 'Criteria',
+      icon: <SettingOutlined />,
+      onClick: () => router.push('/criteria'),
+    }] : []),
     {
       type: 'divider' as const,
     },
