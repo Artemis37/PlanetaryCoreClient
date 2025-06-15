@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Layout, Button, Dropdown, Avatar, Space } from 'antd';
-import { UserOutlined, LogoutOutlined, DownOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined, DownOutlined, GlobalOutlined } from '@ant-design/icons';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
@@ -21,7 +21,6 @@ const CustomHeader = () => {
     dispatch(logout());
     router.push('/');
   };
-
   const userMenuItems = [
     {
       key: 'profile',
@@ -31,6 +30,15 @@ const CustomHeader = () => {
           <div style={{ fontSize: '12px', color: '#666' }}>{user?.email}</div>
         </div>
       ),
+    },
+    {
+      type: 'divider' as const,
+    },
+    {
+      key: 'planets',
+      label: 'Planets',
+      icon: <GlobalOutlined />,
+      onClick: () => router.push('/planets'),
     },
     {
       type: 'divider' as const,
