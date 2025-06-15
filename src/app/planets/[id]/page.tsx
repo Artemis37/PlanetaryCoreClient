@@ -33,10 +33,13 @@ const PlanetDetailPage = () => {  const [planet, setPlanet] = useState<PlanetDet
   const [hasChanges, setHasChanges] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [criteriaToDelete, setCriteriaToDelete] = useState<PlanetCriteriaFlat | null>(null);
-  const { token, isAuthenticated } = useAppSelector((state) => state.user);
+  const { user, token, isAuthenticated } = useAppSelector((state) => state.user);
   const router = useRouter();
   const params = useParams();
   const planetId = params.id as string;
+
+  // Check if user can manage criteria (SuperAdmin = 0 or Admin = 1)
+  const canManageCriteria = user && (user.userType === 'SuperAdmin' || user.userType === 'PlanetAdmin');
 
   useEffect(() => {
     if (!isAuthenticated || !token) {
@@ -61,14 +64,21 @@ const PlanetDetailPage = () => {  const [planet, setPlanet] = useState<PlanetDet
     if (planetId) {
       fetchPlanetDetail();
     }
-  }, [planetId, token, isAuthenticated, router]);
-  const handleAddCriteria = () => {
+  }, [planetId, token, isAuthenticated, router]);  const handleAddCriteria = () => {
+    if (!canManageCriteria) {
+      message.error('You do not have permission to add criteria');
+      return;
+    }
     setEditingCriteria(null);
     setIsEditMode(false);
     setModalVisible(true);
   };
 
   const handleEditCriteria = (criteriaId: string) => {
+    if (!canManageCriteria) {
+      message.error('You do not have permission to edit criteria');
+      return;
+    }
     const criteria = planet?.criteria.find(c => c.criteriaId === criteriaId);
     if (criteria) {
       setEditingCriteria(criteria);
@@ -81,8 +91,11 @@ const PlanetDetailPage = () => {  const [planet, setPlanet] = useState<PlanetDet
     setModalVisible(false);
     setEditingCriteria(null);
     setIsEditMode(false);
-  };
-  const handleDeleteCriteria = (criteriaId: string) => {
+  };  const handleDeleteCriteria = (criteriaId: string) => {
+    if (!canManageCriteria) {
+      message.error('You do not have permission to delete criteria');
+      return;
+    }
     if (!planet) return;
     
     const criteria = planet.criteria.find(c => c.criteriaId === criteriaId);
@@ -411,15 +424,16 @@ const PlanetDetailPage = () => {  const [planet, setPlanet] = useState<PlanetDet
         <Card 
           title={
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Habitability Criteria</span>
-              <Space>
-                <Button 
-                  type="primary" 
-                  icon={<PlusOutlined />}
-                  onClick={handleAddCriteria}
-                >
-                  Add Criteria
-                </Button>
+              <span>Habitability Criteria</span>              <Space>
+                {canManageCriteria && (
+                  <Button 
+                    type="primary" 
+                    icon={<PlusOutlined />}
+                    onClick={handleAddCriteria}
+                  >
+                    Add Criteria
+                  </Button>
+                )}
                 {hasChanges && (
                   <Button 
                     type="primary"
@@ -444,21 +458,23 @@ const PlanetDetailPage = () => {  const [planet, setPlanet] = useState<PlanetDet
                       border: criteria.isMet ? '2px solid #52c41a' : '2px solid #ff4d4f',
                       backgroundColor: criteria.isMet ? '#f6ffed' : '#fff2f0'
                     }}                    extra={
-                      <Space size="small">
-                        <Button
-                          type="text"
-                          icon={<EditOutlined />}
-                          size="small"
-                          onClick={() => handleEditCriteria(criteria.criteriaId)}
-                        />
-                        <Button
-                          type="text"
-                          icon={<DeleteOutlined />}
-                          size="small"
-                          danger
-                          onClick={() => handleDeleteCriteria(criteria.criteriaId)}
-                        />
-                      </Space>
+                      canManageCriteria ? (
+                        <Space size="small">
+                          <Button
+                            type="text"
+                            icon={<EditOutlined />}
+                            size="small"
+                            onClick={() => handleEditCriteria(criteria.criteriaId)}
+                          />
+                          <Button
+                            type="text"
+                            icon={<DeleteOutlined />}
+                            size="small"
+                            danger
+                            onClick={() => handleDeleteCriteria(criteria.criteriaId)}
+                          />
+                        </Space>
+                      ) : undefined
                     }
                   >                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                       {criteria.isMet ? (
@@ -527,20 +543,24 @@ const PlanetDetailPage = () => {  const [planet, setPlanet] = useState<PlanetDet
                 </Col>
               ))}
             </Row>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
+          ) : (            <div style={{ textAlign: 'center', padding: '40px' }}>
               <ExperimentOutlined style={{ fontSize: '48px', color: '#ccc' }} />
               <Title level={4} type="secondary">No Criteria Defined</Title>
               <Paragraph type="secondary">
-                No habitability criteria have been defined for this planet yet.
+                {canManageCriteria 
+                  ? 'No habitability criteria have been defined for this planet yet.'
+                  : 'No habitability criteria have been defined for this planet yet. Only admins can add criteria.'
+                }
               </Paragraph>
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />}
-                onClick={handleAddCriteria}
-              >
-                Add First Criteria
-              </Button>
+              {canManageCriteria && (
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={handleAddCriteria}
+                >
+                  Add First Criteria
+                </Button>
+              )}
             </div>
           )}        </Card>
       </div>      {/* Planet Criteria Modal */}
